@@ -122,7 +122,7 @@ export function getRepairStatusText(status: string) {
     submitted: "已提交",
     assigned: "已派单",
     repairing: "维修中",
-    completed: "已完成",
+    completed: "待验收",
     verified: "已验收",
   };
   return texts[status] || "已提交";

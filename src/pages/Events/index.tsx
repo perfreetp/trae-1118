@@ -28,11 +28,14 @@ import {
 import type { EventStatus, EventLevel, EventType } from "@/types";
 
 export default function Events() {
-  const { events, users, currentUser, eventLogs, assignEvent, resolveEvent } = useAppStore();
+  const { events, users, currentUser, eventLogs, assignEvent, resolveEvent, updateEventLevel } = useAppStore();
   const [activeTab, setActiveTab] = useState<"all" | EventStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const [showEventForm, setShowEventForm] = useState(false);
+  const [showLevelModal, setShowLevelModal] = useState(false);
+  const [newLevel, setNewLevel] = useState<EventLevel>("medium");
+  const [levelReason, setLevelReason] = useState("");
 
   const filteredEvents = events.filter((event) => {
     const matchesTab = activeTab === "all" || event.status === activeTab;
@@ -363,6 +366,19 @@ export default function Events() {
                     标记已解决
                   </button>
                 )}
+                {selectedEvent.status !== "resolved" && selectedEvent.status !== "closed" && (
+                  <button
+                    onClick={() => {
+                      setNewLevel(selectedEvent.level);
+                      setLevelReason("");
+                      setShowLevelModal(true);
+                    }}
+                    className="px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    调整等级
+                  </button>
+                )}
                 <button
                   onClick={() => setShowDetail(null)}
                   className="px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
@@ -370,6 +386,98 @@ export default function Events() {
                   关闭
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedEvent && showLevelModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md animate-fade-in">
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="text-lg font-semibold text-slate-800">调整事件等级</h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">
+                  当前等级
+                </label>
+                <span
+                  className={cn(
+                    "text-sm px-3 py-1.5 rounded-full border",
+                    getEventLevelColor(selectedEvent.level)
+                  )}
+                >
+                  {getEventLevelText(selectedEvent.level)}
+                </span>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">
+                  调整为
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["low", "medium", "high", "critical"] as EventLevel[]).map((level) => (
+                    <button
+                      key={level}
+                      onClick={() => setNewLevel(level)}
+                      className={cn(
+                        "px-3 py-2 rounded-lg text-sm border transition-colors",
+                        newLevel === level
+                          ? "bg-primary-50 border-primary-300 text-primary-700"
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      {getEventLevelText(level)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">
+                  调整原因
+                </label>
+                <textarea
+                  value={levelReason}
+                  onChange={(e) => setLevelReason(e.target.value)}
+                  placeholder="请填写等级调整原因..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                />
+              </div>
+              {(newLevel === "high" || newLevel === "critical") && (
+                <div className="bg-warning-50 border border-warning-200 rounded-lg p-3">
+                  <p className="text-xs text-warning-700">
+                    <AlertTriangle className="w-4 h-4 inline mr-1" />
+                    升级为{getEventLevelText(newLevel)}后将自动触发广播联动，发布通知公告。
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t border-slate-100 flex gap-3">
+              <button
+                onClick={() => setShowLevelModal(false)}
+                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-sm"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  if (levelReason.trim()) {
+                    updateEventLevel(
+                      selectedEvent.id,
+                      newLevel,
+                      levelReason,
+                      currentUser.id,
+                      currentUser.name
+                    );
+                    setShowLevelModal(false);
+                  }
+                }}
+                disabled={!levelReason.trim()}
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                确认调整
+              </button>
             </div>
           </div>
         </div>

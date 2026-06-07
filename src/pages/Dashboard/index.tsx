@@ -66,6 +66,18 @@ export default function Dashboard() {
     .filter((c) => c.current / c.capacity >= 0.7)
     .sort((a, b) => b.current - a.current);
 
+  const activeEvents = events.filter((e) => e.status !== "resolved" && e.status !== "closed");
+  const levelPriority: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+  const highestLevelEvent = activeEvents.length > 0
+    ? activeEvents.reduce((prev, curr) =>
+        levelPriority[curr.level] > levelPriority[prev.level] ? curr : prev
+      )
+    : null;
+
+  const latestBroadcastLog = eventLogs
+    .filter((l) => l.action === "触发广播联动")
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -83,6 +95,64 @@ export default function Dashboard() {
           上报事件
         </button>
       </div>
+
+      {(highestLevelEvent && (highestLevelEvent.level === "high" || highestLevelEvent.level === "critical")) && (
+        <div
+          className={cn(
+            "p-4 rounded-xl cursor-pointer transition-all",
+            highestLevelEvent.level === "critical"
+              ? "bg-gradient-to-r from-danger-500 to-danger-600 text-white"
+              : "bg-gradient-to-r from-warning-500 to-warning-600 text-white"
+          )}
+          onClick={() => setShowEventDetail(highestLevelEvent.id)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-full bg-white/20">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">
+                  当前最高级别：{getEventLevelText(highestLevelEvent.level)}
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-white/20">
+                  {highestLevelEvent.level === "critical" ? "特急" : "紧急"}
+                </span>
+              </div>
+              <p className="text-sm mt-1 opacity-90 truncate">
+                {highestLevelEvent.title} - {highestLevelEvent.location}
+              </p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-xs opacity-75">
+                {formatDateTime(highestLevelEvent.createTime)}
+              </p>
+              <p className="text-xs mt-0.5 opacity-75">
+                上报人：{highestLevelEvent.reporterName}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {latestBroadcastLog && (
+        <div className="bg-slate-800 text-white p-4 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-full bg-white/10 animate-pulse">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">最近联动动作</p>
+              <p className="text-xs text-slate-300 mt-0.5">
+                {latestBroadcastLog.userName} · {latestBroadcastLog.remark}
+              </p>
+            </div>
+            <p className="text-xs text-slate-400 font-mono">
+              {formatDateTime(latestBroadcastLog.time)}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard

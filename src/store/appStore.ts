@@ -3,6 +3,7 @@ import type {
   User,
   Shift,
   Event,
+  EventLevel,
   EventLog,
   PatrolRoute,
   PatrolRecord,
@@ -60,6 +61,13 @@ interface AppState {
   setSidebarCollapsed: (collapsed: boolean) => void;
   addEvent: (event: Omit<Event, "id" | "createTime" | "updateTime">) => void;
   updateEventStatus: (eventId: string, status: Event["status"]) => void;
+  updateEventLevel: (
+    eventId: string,
+    level: EventLevel,
+    reason: string,
+    userId: string,
+    userName: string
+  ) => void;
   addEventLog: (log: Omit<EventLog, "id">) => void;
   addPatrolRecord: (record: Omit<PatrolRecord, "id">) => void;
   repairLogs: RepairLog[];
@@ -70,7 +78,11 @@ interface AppState {
     userId?: string,
     userName?: string,
     result?: string,
-    facilityStatusAfter?: Facility["status"]
+    facilityStatusAfter?: Facility["status"],
+    verifyData?: {
+      remark?: string;
+      rejectReason?: string;
+    }
   ) => void;
   addRepairLog: (log: Omit<RepairLog, "id">) => void;
   updateFacilityStatus: (facilityId: string, status: Facility["status"]) => void;
@@ -80,7 +92,12 @@ interface AppState {
     rectificationId: string,
     status: Rectification["status"],
     userId?: string,
-    userName?: string
+    userName?: string,
+    reviewData?: {
+      result?: "passed" | "failed";
+      remark?: string;
+      images?: string[];
+    }
   ) => void;
   addRectificationLog: (log: Omit<RectificationLog, "id">) => void;
   markNoticeRead: (noticeId: string) => void;
@@ -90,32 +107,73 @@ interface AppState {
   addNotice: (notice: Omit<Notice, "id" | "publishTime" | "isRead">) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  currentUser: mockUsers[0],
-  users: mockUsers,
-  shifts: mockShifts,
-  events: mockEvents,
-  eventLogs: [],
-  patrolRoutes: mockPatrolRoutes,
-  patrolRecords: mockPatrolRecords,
-  facilities: mockFacilities,
-  repairs: mockRepairs,
-  repairLogs: [],
-  merchants: mockMerchants,
-  rectifications: mockRectifications,
-  rectificationLogs: [],
-  drills: mockDrills,
-  drillSummaries: mockDrillSummaries,
-  crowdData: mockCrowdData,
-  notices: mockNotices,
-  contacts: mockContacts,
-  performanceData: mockPerformanceData,
-  crowdTrend: mockCrowdTrend,
-  sidebarCollapsed: false,
+export const useAppStore = create<AppState>((set) => {
+  const generateInitialEventLogs = (): EventLog[] => {
+    const logs: EventLog[] = [];
+    mockEvents.forEach((event) => {
+      logs.push({
+        id: `log-${event.id}-1`,
+        eventId: event.id,
+        action: "事件上报",
+        time: event.createTime,
+        userId: event.reporterId,
+        userName: event.reporterName,
+        remark: `事件类型：${event.type}，位置：${event.location}`,
+      });
+      if (event.handlerId && event.status !== "pending") {
+        logs.push({
+          id: `log-${event.id}-2`,
+          eventId: event.id,
+          action: "接手处理",
+          time: event.createTime,
+          userId: event.handlerId,
+          userName: event.handlerName || "",
+          remark: "已指派处理人",
+        });
+      }
+      if (event.status === "resolved" || event.status === "closed") {
+        logs.push({
+          id: `log-${event.id}-3`,
+          eventId: event.id,
+          action: "事件解决",
+          time: event.updateTime,
+          userId: event.handlerId || "",
+          userName: event.handlerName || "",
+          remark: "事件已处理完成",
+        });
+      }
+    });
+    return logs.sort(
+      (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+    );
+  };
 
-  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+  return {
+    currentUser: mockUsers[0],
+    users: mockUsers,
+    shifts: mockShifts,
+    events: mockEvents,
+    eventLogs: generateInitialEventLogs(),
+    patrolRoutes: mockPatrolRoutes,
+    patrolRecords: mockPatrolRecords,
+    facilities: mockFacilities,
+    repairs: mockRepairs,
+    repairLogs: [],
+    merchants: mockMerchants,
+    rectifications: mockRectifications,
+    rectificationLogs: [],
+    drills: mockDrills,
+    drillSummaries: mockDrillSummaries,
+    crowdData: mockCrowdData,
+    notices: mockNotices,
+    contacts: mockContacts,
+    performanceData: mockPerformanceData,
+    crowdTrend: mockCrowdTrend,
+    sidebarCollapsed: false,
 
-  addEvent: (event) =>
+    setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+
+    addEvent: (event) =>
     set((state) => {
       const newEventId = `e${Date.now()}`;
       const now = new Date().toISOString();
@@ -214,24 +272,33 @@ export const useAppStore = create<AppState>((set) => ({
       };
     }),
 
-  updateRepairStatus: (repairId, status, userId, userName, result, facilityStatusAfter) =>
+  updateRepairStatus: (repairId, status, userId, userName, result, facilityStatusAfter, verifyData) =>
     set((state) => {
       const now = new Date().toISOString();
       const repair = state.repairs.find((r) => r.id === repairId);
+      if (!repair) return state;
+
       const actionMap: Record<string, string> = {
         assigned: "指派处理人",
         repairing: "开始维修",
-        completed: "完成维修",
+        completed: "完成维修（待验收）",
         verified: "验收通过",
       };
 
       let updatedFacilities = state.facilities;
-      if (status === "completed" && repair && facilityStatusAfter) {
+      if (status === "verified" && facilityStatusAfter) {
         updatedFacilities = state.facilities.map((f) =>
           f.id === repair.facilityId
             ? { ...f, status: facilityStatusAfter }
             : f
         );
+      }
+
+      let newHandlerId = repair.handlerId;
+      let newHandlerName = repair.handlerName;
+      if (status === "repairing" && !repair.handlerId && userId && userName) {
+        newHandlerId = userId;
+        newHandlerName = userName;
       }
 
       return {
@@ -240,10 +307,26 @@ export const useAppStore = create<AppState>((set) => ({
             ? {
                 ...r,
                 status,
+                handlerId: newHandlerId,
+                handlerName: newHandlerName,
                 finishTime:
                   status === "completed" ? now : r.finishTime,
                 startTime:
                   status === "repairing" && !r.startTime ? now : r.startTime,
+                verifyTime:
+                  status === "verified" ? now : r.verifyTime,
+                verifiedBy:
+                  status === "verified" ? userId : r.verifiedBy,
+                verifiedByName:
+                  status === "verified" ? userName : r.verifiedByName,
+                verifyRemark:
+                  status === "verified"
+                    ? verifyData?.remark
+                    : r.verifyRemark,
+                rejectReason:
+                  status === "repairing" && r.status === "completed"
+                    ? verifyData?.rejectReason
+                    : r.rejectReason,
               }
             : r
         ),
@@ -253,9 +336,15 @@ export const useAppStore = create<AppState>((set) => ({
             repairId,
             userId: userId || "",
             userName: userName || "",
-            action: actionMap[status] || "状态更新",
+            action:
+              status === "repairing" && repair.status === "completed"
+                ? "退回维修"
+                : actionMap[status] || "状态更新",
             time: now,
-            remark: result || "",
+            remark:
+              status === "repairing" && repair.status === "completed"
+                ? verifyData?.rejectReason || ""
+                : result || "",
           },
           ...state.repairLogs,
         ],
@@ -313,7 +402,7 @@ export const useAppStore = create<AppState>((set) => ({
       };
     }),
 
-  updateRectificationStatus: (rectificationId, status, userId, userName) =>
+  updateRectificationStatus: (rectificationId, status, userId, userName, reviewData) =>
     set((state) => {
       const now = new Date().toISOString();
       const rectification = state.rectifications.find(
@@ -335,7 +424,22 @@ export const useAppStore = create<AppState>((set) => ({
 
       return {
         rectifications: state.rectifications.map((r) =>
-          r.id === rectificationId ? { ...r, status } : r
+          r.id === rectificationId
+            ? {
+                ...r,
+                status,
+                ...(status === "passed" || status === "failed"
+                  ? {
+                      reviewTime: now,
+                      reviewerId: userId || r.reviewerId,
+                      reviewerName: userName || r.reviewerName,
+                      reviewResult: status as "passed" | "failed",
+                      reviewRemark: reviewData?.remark || r.reviewRemark,
+                      reviewImages: reviewData?.images || r.reviewImages,
+                    }
+                  : {}),
+              }
+            : r
         ),
         rectificationLogs: [
           {
@@ -345,7 +449,7 @@ export const useAppStore = create<AppState>((set) => ({
             userName: userName || "",
             action: actionMap[status] || "状态更新",
             time: now,
-            remark: "",
+            remark: reviewData?.remark || "",
           },
           ...state.rectificationLogs,
         ],
@@ -426,6 +530,80 @@ export const useAppStore = create<AppState>((set) => ({
       };
     }),
 
+  updateEventLevel: (eventId, level, reason, userId, userName) =>
+    set((state) => {
+      const now = new Date().toISOString();
+      const event = state.events.find((e) => e.id === eventId);
+      if (!event) return state;
+
+      const levelMap: Record<string, string> = {
+        low: "一般",
+        medium: "重要",
+        high: "紧急",
+        critical: "特急",
+      };
+
+      const isUpgrade =
+        (level === "medium" && event.level === "low") ||
+        (level === "high" && (event.level === "low" || event.level === "medium")) ||
+        (level === "critical" && event.level !== "critical");
+
+      const action = isUpgrade ? "升级事件" : "降级事件";
+      const actionText = `${action}为【${levelMap[level]}】`;
+
+      let newNotices = state.notices;
+      let newEventLogs = state.eventLogs;
+
+      if (isUpgrade && (level === "high" || level === "critical")) {
+        const noticeType: "urgent" | "emergency" = level === "critical" ? "emergency" : "urgent";
+        const broadcastNotice: Notice = {
+          id: `n${Date.now()}`,
+          title: `【${levelMap[level]}事件通知】${event.title}`,
+          content: `事件位置：${event.location}\n事件描述：${event.description}\n\n请相关人员立即响应！`,
+          type: noticeType,
+          publisher: userName,
+          publishTime: now,
+          isRead: false,
+          targetRoles: ["security", "engineering", "admin"],
+        };
+        newNotices = [broadcastNotice, ...state.notices];
+
+        newEventLogs = [
+          {
+            id: `el${Date.now() + 1}`,
+            eventId,
+            userId,
+            userName,
+            action: "触发广播联动",
+            time: now,
+            remark: `已发布${levelMap[level]}事件通知公告`,
+          },
+          ...newEventLogs,
+        ];
+      }
+
+      newEventLogs = [
+        {
+          id: `el${Date.now()}`,
+          eventId,
+          userId,
+          userName,
+          action: actionText,
+          time: now,
+          remark: reason,
+        },
+        ...newEventLogs,
+      ];
+
+      return {
+        events: state.events.map((e) =>
+          e.id === eventId ? { ...e, level, updateTime: now } : e
+        ),
+        eventLogs: newEventLogs,
+        notices: newNotices,
+      };
+    }),
+
   addFacility: (facility) =>
     set((state) => ({
       facilities: [
@@ -448,4 +626,5 @@ export const useAppStore = create<AppState>((set) => ({
         ...state.notices,
       ],
     })),
-}));
+  };
+});

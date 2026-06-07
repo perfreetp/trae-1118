@@ -46,6 +46,8 @@ export default function Facility() {
   const [showRepairDetail, setShowRepairDetail] = useState<string | null>(null);
   const [repairResult, setRepairResult] = useState("");
   const [facilityStatusAfter, setFacilityStatusAfter] = useState<"normal" | "fault">("normal");
+  const [verifyRemark, setVerifyRemark] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
 
   const typeOptions: { value: FacilityType | "all"; label: string }[] = [
     { value: "all", label: "全部" },
@@ -440,92 +442,37 @@ export default function Facility() {
                     >
                       {getRepairStatusText(repair.status)}
                     </span>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">报修内容</p>
-                    <p className="text-sm text-slate-700">
-                      {repair.description}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">报修人</p>
-                      <p className="text-sm text-slate-700">
-                        {repair.reporterName}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">处理人</p>
-                      <p className="text-sm text-slate-700">
-                        {repair.handlerName || "待指派"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">报修时间</p>
-                      <p className="text-sm text-slate-700 font-mono">
-                        {formatDateTime(repair.createTime)}
-                      </p>
-                    </div>
-                    {repair.startTime && (
-                      <div>
-                        <p className="text-xs text-slate-500 mb-1">开始维修</p>
-                        <p className="text-sm text-slate-700 font-mono">
-                          {formatDateTime(repair.startTime)}
-                        </p>
-                      </div>
-                    )}
-                    {repair.finishTime && (
-                      <div>
-                        <p className="text-xs text-slate-500 mb-1">完成时间</p>
-                        <p className="text-sm text-slate-700 font-mono">
-                          {formatDateTime(repair.finishTime)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {facility && (
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">关联设施状态</p>
-                      <span
-                        className={cn(
-                          "text-xs px-2 py-1 rounded-full",
-                          getFacilityStatusColor(facility.status)
-                        )}
-                      >
-                        {getFacilityStatusText(facility.status)}
-                      </span>
-                    </div>
-                  )}
+</div>
                 </div>
 
-                {repair.status === "repairing" && (
-                  <div className="bg-primary-50 rounded-lg p-4 space-y-3">
-                    <h4 className="font-medium text-slate-800">完成维修</h4>
+                {repair.status === "completed" && (
+                  <div className="bg-success-50 border border-success-200 rounded-lg p-4 space-y-3">
+                    <h4 className="font-medium text-slate-800">验收工单</h4>
                     <div>
                       <label className="text-xs text-slate-500 mb-1 block">
-                        处理结果
+                        验收说明
                       </label>
                       <textarea
-                        value={repairResult}
-                        onChange={(e) => setRepairResult(e.target.value)}
-                        placeholder="请填写维修处理结果..."
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                        value={verifyRemark}
+                        onChange={(e) => setVerifyRemark(e.target.value)}
+                        placeholder="请填写验收说明..."
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-success-500 resize-none bg-white"
                         rows={3}
                       />
                     </div>
                     <div>
                       <label className="text-xs text-slate-500 mb-2 block">
-                        设施状态
+                        设施最终状态
                       </label>
                       <div className="flex gap-3">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="radio"
-                            name="facilityStatus"
+                            name="facilityStatusVerify"
                             value="normal"
                             checked={facilityStatusAfter === "normal"}
                             onChange={() => setFacilityStatusAfter("normal")}
-                            className="text-primary-600"
+                            className="text-success-600"
                           />
                           <span className="text-sm text-slate-700">
                             恢复正常
@@ -534,11 +481,11 @@ export default function Facility() {
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="radio"
-                            name="facilityStatus"
+                            name="facilityStatusVerify"
                             value="fault"
                             checked={facilityStatusAfter === "fault"}
                             onChange={() => setFacilityStatusAfter("fault")}
-                            className="text-primary-600"
+                            className="text-danger-600"
                           />
                           <span className="text-sm text-slate-700">
                             保留异常
@@ -546,6 +493,82 @@ export default function Facility() {
                         </label>
                       </div>
                     </div>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => {
+                          updateRepairStatus(
+                            repair.id,
+                            "verified",
+                            currentUser.id,
+                            currentUser.name,
+                            repairResult,
+                            facilityStatusAfter,
+                            { remark: verifyRemark }
+                          );
+                          setShowRepairDetail(null);
+                        }}
+                        className="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        验收通过
+                      </button>
+                      <button
+                        onClick={() => {
+                          const reason = prompt("请输入退回原因：");
+                          if (reason) {
+                            updateRepairStatus(
+                              repair.id,
+                              "repairing",
+                              currentUser.id,
+                              currentUser.name,
+                              undefined,
+                              undefined,
+                              { rejectReason: reason }
+                            );
+                          }
+                        }}
+                        className="flex-1 px-4 py-2.5 bg-danger-100 text-danger-700 rounded-lg hover:bg-danger-200 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                        退回维修
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {repair.verifiedByName && (
+                  <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                    <h4 className="font-medium text-slate-800">验收信息</h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-slate-500">验收人</p>
+                        <p className="text-slate-700">{repair.verifiedByName}</p>
+                      </div>
+                      {repair.verifyTime && (
+                        <div>
+                          <p className="text-xs text-slate-500">验收时间</p>
+                          <p className="text-slate-700 font-mono">
+                            {formatDateTime(repair.verifyTime)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    {repair.verifyRemark && (
+                      <div>
+                        <p className="text-xs text-slate-500">验收说明</p>
+                        <p className="text-sm text-slate-700">
+                          {repair.verifyRemark}
+                        </p>
+                      </div>
+                    )}
+                    {repair.rejectReason && (
+                      <div>
+                        <p className="text-xs text-slate-500">退回原因</p>
+                        <p className="text-sm text-danger-600">
+                          {repair.rejectReason}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 

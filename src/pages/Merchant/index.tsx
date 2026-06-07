@@ -39,6 +39,8 @@ export default function Merchant() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showRectificationForm, setShowRectificationForm] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [reviewRemark, setReviewRemark] = useState("");
+  const [reviewImages, setReviewImages] = useState<string[]>([]);
 
   const floors = ["all", "1层", "2层", "3层", "4层", "5层", "B1"];
 
@@ -286,7 +288,7 @@ export default function Merchant() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-sm text-slate-600">
-                        {rect.reviewerName || "待复查"}
+                        {rect.reviewerName || (rect.status === "passed" ? "-" : "待复查")}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -425,6 +427,52 @@ export default function Merchant() {
                       </p>
                     </div>
                   )}
+                  {rectification.reviewResult && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">复查结论</p>
+                      <span
+                        className={cn(
+                          "text-xs px-2 py-1 rounded-full",
+                          rectification.reviewResult === "passed"
+                            ? "bg-success-100 text-success-700"
+                            : "bg-danger-100 text-danger-700"
+                        )}
+                      >
+                        {rectification.reviewResult === "passed" ? "整改通过" : "整改不通过"}
+                      </span>
+                    </div>
+                  )}
+                  {rectification.reviewRemark && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">复查说明</p>
+                      <p className="text-sm text-slate-700">
+                        {rectification.reviewRemark}
+                      </p>
+                    </div>
+                  )}
+                  {rectification.reviewTime && rectification.reviewResult && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">复查时间</p>
+                      <p className="text-sm text-slate-700 font-mono">
+                        {formatDateTime(rectification.reviewTime)}
+                      </p>
+                    </div>
+                  )}
+                  {rectification.reviewImages && rectification.reviewImages.length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2">复查图片</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {rectification.reviewImages.map((img, i) => (
+                          <div
+                            key={i}
+                            className="w-24 h-24 rounded-lg bg-slate-200 flex items-center justify-center"
+                          >
+                            <Image className="w-6 h-6 text-slate-400" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {rectification.images.length > 0 && (
                     <div>
                       <p className="text-xs text-slate-500 mb-2">现场图片</p>
@@ -441,6 +489,69 @@ export default function Merchant() {
                     </div>
                   )}
                 </div>
+
+                {rectification.status === "reviewing" && (
+                  <div className="bg-primary-50 rounded-lg p-4 space-y-3">
+                    <h4 className="font-medium text-slate-800">复查验收</h4>
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1 block">
+                        复查说明
+                      </label>
+                      <textarea
+                        value={reviewRemark}
+                        onChange={(e) => setReviewRemark(e.target.value)}
+                        placeholder="请填写复查验收说明..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none bg-white"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => {
+                          updateRectificationStatus(
+                            rectification.id,
+                            "passed",
+                            currentUser.id,
+                            currentUser.name,
+                            {
+                              result: "passed",
+                              remark: reviewRemark,
+                              images: reviewImages,
+                            }
+                          );
+                          setReviewRemark("");
+                          setReviewImages([]);
+                          setShowDetail(null);
+                        }}
+                        className="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        整改通过
+                      </button>
+                      <button
+                        onClick={() => {
+                          updateRectificationStatus(
+                            rectification.id,
+                            "failed",
+                            currentUser.id,
+                            currentUser.name,
+                            {
+                              result: "failed",
+                              remark: reviewRemark,
+                              images: reviewImages,
+                            }
+                          );
+                          setReviewRemark("");
+                          setReviewImages([]);
+                        }}
+                        className="flex-1 px-4 py-2.5 bg-danger-100 text-danger-700 rounded-lg hover:bg-danger-200 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                        整改不通过
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <h4 className="font-medium text-slate-800 mb-3 flex items-center gap-2">
@@ -513,23 +624,6 @@ export default function Merchant() {
                     >
                       <FileText className="w-4 h-4" />
                       申请复查
-                    </button>
-                  )}
-                  {rectification.status === "reviewing" && (
-                    <button
-                      onClick={() => {
-                        updateRectificationStatus(
-                          rectification.id,
-                          "passed",
-                          currentUser.id,
-                          currentUser.name
-                        );
-                        setShowDetail(null);
-                      }}
-                      className="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      整改通过
                     </button>
                   )}
                   <button

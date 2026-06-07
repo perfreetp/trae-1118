@@ -149,6 +149,11 @@ export interface Repair {
   description: string;
   solution: string;
   priority: "low" | "medium" | "high";
+  verifyRemark?: string;
+  verifiedBy?: string;
+  verifiedByName?: string;
+  verifyTime?: string;
+  rejectReason?: string;
 }
 
 export interface Merchant {
@@ -188,6 +193,9 @@ export interface Rectification {
   reviewTime: string;
   reviewerId: string;
   reviewerName: string;
+  reviewResult?: "passed" | "failed";
+  reviewRemark?: string;
+  reviewImages?: string[];
   images: string[];
 }
 
