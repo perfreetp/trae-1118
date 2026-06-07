@@ -28,8 +28,59 @@ import {
 } from "recharts";
 
 export default function Reports() {
-  const { performanceData, events, patrolRecords, rectifications } = useAppStore();
+  const { performanceData, events, patrolRecords, rectifications, facilities, repairs } = useAppStore();
   const [timeRange, setTimeRange] = useState("month");
+
+  const handleExportReport = () => {
+    const today = new Date().toISOString().split("T")[0];
+    let csvContent = "";
+
+    csvContent += "商场公共安全值守系统 - 经营报表\n";
+    csvContent += `生成日期: ${today}\n\n`;
+
+    csvContent += "一、核心指标统计\n";
+    csvContent += "指标,数值\n";
+    csvContent += `总事件数,${events.length}\n`;
+    csvContent += `已解决事件数,${events.filter((e) => e.status === "resolved" || e.status === "closed").length}\n`;
+    csvContent += `待处理事件数,${events.filter((e) => e.status === "pending").length}\n`;
+    csvContent += `处理中事件数,${events.filter((e) => e.status === "processing").length}\n`;
+    csvContent += `巡更记录数,${patrolRecords.length}\n`;
+    csvContent += `整改完成率,${
+      rectifications.length > 0
+        ? Math.round(
+            (rectifications.filter((r) => r.status === "passed").length /
+              rectifications.length) *
+              100
+          )
+        : 0
+    }%\n`;
+    csvContent += `设施总数,${facilities.length}\n`;
+    csvContent += `维修工单总数,${repairs.length}\n\n`;
+
+    csvContent += "二、事件类型分布\n";
+    csvContent += "事件类型,数量\n";
+    csvContent += `失物招领,${events.filter((e) => e.type === "lost-item").length}\n`;
+    csvContent += `走失人员,${events.filter((e) => e.type === "missing-person").length}\n`;
+    csvContent += `客流拥堵,${events.filter((e) => e.type === "congestion").length}\n`;
+    csvContent += `设备故障,${events.filter((e) => e.type === "equipment-fault").length}\n`;
+    csvContent += `消防隐患,${events.filter((e) => e.type === "fire-hazard").length}\n\n`;
+
+    csvContent += "三、事件列表\n";
+    csvContent += "ID,事件标题,类型,位置,状态,上报人,处理人,上报时间\n";
+    events.forEach((e) => {
+      csvContent += `${e.id},${e.title},${e.type},${e.location},${e.status},${e.reporterName || ""},${e.handlerName || ""},${e.createTime}\n`;
+    });
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `安全经营报表_${today}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const eventTypeData = [
     { name: "失物招领", value: events.filter((e) => e.type === "lost-item").length, color: "#3b61f5" },
@@ -85,7 +136,10 @@ export default function Reports() {
               <option value="year">本年</option>
             </select>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+          <button
+            onClick={handleExportReport}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+          >
             <Download className="w-4 h-4" />
             导出报表
           </button>

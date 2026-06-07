@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -11,6 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
+import EventForm from "@/components/forms/EventForm";
 import { useAppStore } from "@/store/appStore";
 import {
   cn,
@@ -27,6 +29,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart,
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [showEventForm, setShowEventForm] = useState(false);
   const {
     events,
     users,
@@ -64,7 +67,7 @@ export default function Dashboard() {
           </p>
         </div>
         <button
-          onClick={() => navigate("/events/new")}
+          onClick={() => setShowEventForm(true)}
           className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
         >
           <AlertCircle className="w-4 h-4" />
@@ -350,6 +353,8 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <EventForm isOpen={showEventForm} onClose={() => setShowEventForm(false)} />
     </div>
   );
 }

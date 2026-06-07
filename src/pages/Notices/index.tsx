@@ -12,6 +12,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
+import NoticeForm from "@/components/forms/NoticeForm";
 import { cn, formatDateTime } from "@/utils";
 import type { Notice } from "@/types";
 
@@ -20,6 +21,7 @@ export default function Notices() {
   const [selectedType, setSelectedType] = useState<Notice["type"] | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showNoticeForm, setShowNoticeForm] = useState(false);
 
   const typeOptions = [
     { value: "all" as const, label: "全部" },
@@ -69,7 +71,10 @@ export default function Notices() {
           <h1 className="text-2xl font-bold text-slate-800">通知公告</h1>
           <p className="text-slate-500 mt-1">系统通知和公告管理</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+        <button
+          onClick={() => setShowNoticeForm(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+        >
           <Plus className="w-4 h-4" />
           发布通知
         </button>
@@ -240,6 +245,11 @@ export default function Notices() {
           </div>
         )}
       </div>
+
+      <NoticeForm
+        isOpen={showNoticeForm}
+        onClose={() => setShowNoticeForm(false)}
+      />
     </div>
   );
 }

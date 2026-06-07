@@ -65,6 +65,11 @@ interface AppState {
     status: Rectification["status"]
   ) => void;
   markNoticeRead: (noticeId: string) => void;
+  assignEvent: (eventId: string, handlerId: string, handlerName: string) => void;
+  resolveEvent: (eventId: string) => void;
+  addFacility: (facility: Omit<Facility, "id">) => void;
+  updateFacilityStatus: (facilityId: string, status: Facility["status"]) => void;
+  addNotice: (notice: Omit<Notice, "id" | "publishTime" | "isRead">) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -170,5 +175,58 @@ export const useAppStore = create<AppState>((set) => ({
       notices: state.notices.map((n) =>
         n.id === noticeId ? { ...n, isRead: true } : n
       ),
+    })),
+
+  assignEvent: (eventId, handlerId, handlerName) =>
+    set((state) => ({
+      events: state.events.map((e) =>
+        e.id === eventId
+          ? {
+              ...e,
+              handlerId,
+              handlerName,
+              status: "processing",
+              updateTime: new Date().toISOString(),
+            }
+          : e
+      ),
+    })),
+
+  resolveEvent: (eventId) =>
+    set((state) => ({
+      events: state.events.map((e) =>
+        e.id === eventId
+          ? { ...e, status: "resolved", updateTime: new Date().toISOString() }
+          : e
+      ),
+    })),
+
+  addFacility: (facility) =>
+    set((state) => ({
+      facilities: [
+        {
+          ...facility,
+          id: `F${Date.now()}`,
+        },
+        ...state.facilities,
+      ],
+    })),
+  updateFacilityStatus: (facilityId, status) =>
+    set((state) => ({
+      facilities: state.facilities.map((f) =>
+        f.id === facilityId ? { ...f, status } : f
+      ),
+    })),
+  addNotice: (notice) =>
+    set((state) => ({
+      notices: [
+        {
+          ...notice,
+          id: `n${Date.now()}`,
+          publishTime: new Date().toISOString(),
+          isRead: false,
+        },
+        ...state.notices,
+      ],
     })),
 }));

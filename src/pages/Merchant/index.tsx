@@ -10,20 +10,24 @@ import {
   MapPin,
   Phone,
   FileText,
+  ArrowRight,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
+import RectificationForm from "@/components/forms/RectificationForm";
 import {
   cn,
   formatDateTime,
   getRectificationStatusColor,
   getRectificationStatusText,
 } from "@/utils";
+import type { RectificationStatus } from "@/types";
 
 export default function Merchant() {
-  const { merchants, rectifications } = useAppStore();
+  const { merchants, rectifications, updateRectificationStatus } = useAppStore();
   const [activeTab, setActiveTab] = useState<"merchants" | "rectifications">("merchants");
   const [selectedFloor, setSelectedFloor] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showRectificationForm, setShowRectificationForm] = useState(false);
 
   const floors = ["all", "1层", "2层", "3层", "4层", "5层", "B1"];
 
@@ -54,7 +58,10 @@ export default function Merchant() {
             <FileText className="w-4 h-4" />
             检查记录
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+          <button
+            onClick={() => setShowRectificationForm(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+          >
             <Plus className="w-4 h-4" />
             新建整改
           </button>
@@ -226,6 +233,7 @@ export default function Merchant() {
                   <th className="px-4 py-3 font-medium">截止时间</th>
                   <th className="px-4 py-3 font-medium">状态</th>
                   <th className="px-4 py-3 font-medium">复查人</th>
+                  <th className="px-4 py-3 font-medium">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,6 +274,40 @@ export default function Merchant() {
                         {rect.reviewerName || "待复查"}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      {rect.status === "issued" && (
+                        <button
+                          onClick={() => updateRectificationStatus(rect.id, "rectifying")}
+                          className="text-xs px-3 py-1.5 bg-warning-100 text-warning-700 rounded-lg hover:bg-warning-200 transition-colors flex items-center gap-1"
+                        >
+                          <Clock className="w-3 h-3" />
+                          开始整改
+                        </button>
+                      )}
+                      {rect.status === "rectifying" && (
+                        <button
+                          onClick={() => updateRectificationStatus(rect.id, "reviewing")}
+                          className="text-xs px-3 py-1.5 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors flex items-center gap-1"
+                        >
+                          <FileText className="w-3 h-3" />
+                          申请复查
+                        </button>
+                      )}
+                      {rect.status === "reviewing" && (
+                        <button
+                          onClick={() =>
+                            updateRectificationStatus(rect.id, "passed")
+                          }
+                          className="text-xs px-3 py-1.5 bg-success-100 text-success-700 rounded-lg hover:bg-success-200 transition-colors flex items-center gap-1"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          整改通过
+                        </button>
+                      )}
+                      {(rect.status === "passed" || rect.status === "failed") && (
+                        <span className="text-xs text-slate-400">已完成</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -273,6 +315,11 @@ export default function Merchant() {
           </div>
         </div>
       )}
+
+      <RectificationForm
+        isOpen={showRectificationForm}
+        onClose={() => setShowRectificationForm(false)}
+      />
     </div>
   );
 }

@@ -96,9 +96,10 @@ export default function Contacts() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {quickDial.map((item) => (
-          <button
+          <a
             key={item.number}
-            className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition-all group"
+            href={`tel:${item.number}`}
+            className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition-all group block"
           >
             <div className="flex items-center gap-4">
               <div
@@ -114,7 +115,7 @@ export default function Contacts() {
                 <p className="text-2xl font-bold text-slate-800 font-mono">{item.number}</p>
               </div>
             </div>
-          </button>
+          </a>
         ))}
       </div>
 
@@ -192,9 +193,12 @@ export default function Contacts() {
                   <Phone className="w-4 h-4" />
                   <span className="font-mono text-sm font-medium">{contact.phone}</span>
                 </div>
-                <button className="p-2 rounded-lg bg-primary-50 text-primary-600 hover:bg-primary-100 transition-colors">
+                <a
+                  href={`tel:${contact.phone}`}
+                  className="p-2 rounded-lg bg-primary-50 text-primary-600 hover:bg-primary-100 transition-colors"
+                >
                   <PhoneCall className="w-4 h-4" />
-                </button>
+                </a>
               </div>
             </div>
           </div>

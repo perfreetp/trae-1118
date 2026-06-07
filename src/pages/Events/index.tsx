@@ -15,6 +15,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
+import EventForm from "@/components/forms/EventForm";
 import {
   cn,
   formatDateTime,
@@ -27,10 +28,11 @@ import {
 import type { EventStatus, EventLevel, EventType } from "@/types";
 
 export default function Events() {
-  const { events, users, currentUser } = useAppStore();
+  const { events, users, currentUser, assignEvent, resolveEvent } = useAppStore();
   const [activeTab, setActiveTab] = useState<"all" | EventStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [showEventForm, setShowEventForm] = useState(false);
 
   const filteredEvents = events.filter((event) => {
     const matchesTab = activeTab === "all" || event.status === activeTab;
@@ -73,7 +75,10 @@ export default function Events() {
           <h1 className="text-2xl font-bold text-slate-800">事件处置</h1>
           <p className="text-slate-500 mt-1">管理和处置各类安全事件</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+        <button
+          onClick={() => setShowEventForm(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+        >
           <Plus className="w-4 h-4" />
           上报事件
         </button>
@@ -367,12 +372,20 @@ export default function Events() {
 
               <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
                 {selectedEvent.status === "pending" && (
-                  <button className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                  <button
+                    onClick={() => {
+                      assignEvent(selectedEvent.id, currentUser.id, currentUser.name);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
                     接手处理
                   </button>
                 )}
                 {selectedEvent.status === "processing" && (
-                  <button className="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors">
+                  <button
+                    onClick={() => resolveEvent(selectedEvent.id)}
+                    className="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors"
+                  >
                     标记已解决
                   </button>
                 )}
@@ -387,6 +400,8 @@ export default function Events() {
           </div>
         </div>
       )}
+
+      <EventForm isOpen={showEventForm} onClose={() => setShowEventForm(false)} />
     </div>
   );
 }

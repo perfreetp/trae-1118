@@ -10,8 +10,10 @@ import {
   Filter,
   MapPin,
   Calendar,
+  ArrowRight,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
+import RepairForm from "@/components/forms/RepairForm";
 import {
   cn,
   formatDate,
@@ -22,13 +24,16 @@ import {
   getRepairStatusColor,
   getRepairStatusText,
 } from "@/utils";
-import type { FacilityType, FacilityStatus } from "@/types";
+import type { FacilityType, FacilityStatus, RepairStatus } from "@/types";
 
 export default function Facility() {
-  const { facilities, repairs } = useAppStore();
+  const { facilities, repairs, updateRepairStatus } = useAppStore();
   const [activeTab, setActiveTab] = useState<"facilities" | "repairs">("facilities");
   const [selectedType, setSelectedType] = useState<FacilityType | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showRepairForm, setShowRepairForm] = useState(false);
+  const [showFacilityForm, setShowFacilityForm] = useState(false);
+  const [formMode, setFormMode] = useState<"repair" | "facility">("repair");
 
   const typeOptions: { value: FacilityType | "all"; label: string }[] = [
     { value: "all", label: "全部" },
@@ -64,11 +69,23 @@ export default function Facility() {
           <p className="text-slate-500 mt-1">设备巡检和维修管理</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+          <button
+            onClick={() => {
+              setFormMode("facility");
+              setShowFacilityForm(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          >
             <Building2 className="w-4 h-4" />
             新增设施
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+          <button
+            onClick={() => {
+              setFormMode("repair");
+              setShowRepairForm(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+          >
             <Plus className="w-4 h-4" />
             报修登记
           </button>
@@ -242,6 +259,7 @@ export default function Facility() {
                   <th className="px-4 py-3 font-medium">状态</th>
                   <th className="px-4 py-3 font-medium">报修时间</th>
                   <th className="px-4 py-3 font-medium">优先级</th>
+                  <th className="px-4 py-3 font-medium">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,6 +314,38 @@ export default function Facility() {
                           : "低"}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      {repair.status === "submitted" && (
+                        <button
+                          onClick={() => updateRepairStatus(repair.id, "repairing")}
+                          className="text-xs px-3 py-1.5 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors flex items-center gap-1"
+                        >
+                          <Wrench className="w-3 h-3" />
+                          开始维修
+                        </button>
+                      )}
+                      {repair.status === "assigned" && (
+                        <button
+                          onClick={() => updateRepairStatus(repair.id, "repairing")}
+                          className="text-xs px-3 py-1.5 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors flex items-center gap-1"
+                        >
+                          <Wrench className="w-3 h-3" />
+                          开始维修
+                        </button>
+                      )}
+                      {repair.status === "repairing" && (
+                        <button
+                          onClick={() => updateRepairStatus(repair.id, "completed")}
+                          className="text-xs px-3 py-1.5 bg-success-100 text-success-700 rounded-lg hover:bg-success-200 transition-colors flex items-center gap-1"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          完成维修
+                        </button>
+                      )}
+                      {repair.status === "completed" && (
+                        <span className="text-xs text-slate-400">已完成</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -303,6 +353,15 @@ export default function Facility() {
           </div>
         </div>
       )}
+
+      <RepairForm
+        isOpen={showRepairForm || showFacilityForm}
+        onClose={() => {
+          setShowRepairForm(false);
+          setShowFacilityForm(false);
+        }}
+        mode={formMode}
+      />
     </div>
   );
 }
