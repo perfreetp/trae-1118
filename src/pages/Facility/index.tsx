@@ -14,6 +14,7 @@ import {
   X,
   User,
   MessageSquare,
+  Image,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import RepairForm from "@/components/forms/RepairForm";
@@ -45,6 +46,7 @@ export default function Facility() {
   const [formMode, setFormMode] = useState<"repair" | "facility">("repair");
   const [showRepairDetail, setShowRepairDetail] = useState<string | null>(null);
   const [repairResult, setRepairResult] = useState("");
+  const [repairImages, setRepairImages] = useState<string[]>([]);
   const [facilityStatusAfter, setFacilityStatusAfter] = useState<"normal" | "fault">("normal");
   const [verifyRemark, setVerifyRemark] = useState("");
   const [rejectReason, setRejectReason] = useState("");
@@ -442,8 +444,168 @@ export default function Facility() {
                     >
                       {getRepairStatusText(repair.status)}
                     </span>
-</div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">报修内容</p>
+                    <p className="text-sm text-slate-700">
+                      {repair.description}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">报修人</p>
+                      <p className="text-sm text-slate-700">
+                        {repair.reporterName}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">处理人</p>
+                      <p className="text-sm text-slate-700">
+                        {repair.handlerName || "待指派"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">报修时间</p>
+                      <p className="text-sm text-slate-700 font-mono">
+                        {formatDateTime(repair.createTime)}
+                      </p>
+                    </div>
+                    {repair.startTime && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">开始维修</p>
+                        <p className="text-sm text-slate-700 font-mono">
+                          {formatDateTime(repair.startTime)}
+                        </p>
+                      </div>
+                    )}
+                    {repair.finishTime && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">完成时间</p>
+                        <p className="text-sm text-slate-700 font-mono">
+                          {formatDateTime(repair.finishTime)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {facility && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">关联设施状态</p>
+                      <span
+                        className={cn(
+                          "text-xs px-2 py-1 rounded-full",
+                          getFacilityStatusColor(facility.status)
+                        )}
+                      >
+                        {getFacilityStatusText(facility.status)}
+                      </span>
+                    </div>
+                  )}
+                  {repair.solution && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">处理结果</p>
+                      <p className="text-sm text-slate-700">
+                        {repair.solution}
+                      </p>
+                    </div>
+                  )}
+                  {repair.repairImages && repair.repairImages.length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2">处理图片</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {repair.repairImages.map((img, i) => (
+                          <div
+                            key={i}
+                            className="w-20 h-20 rounded-lg bg-slate-200 flex items-center justify-center border border-slate-200"
+                          >
+                            <Image className="w-5 h-5 text-slate-400" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {repair.status === "repairing" && (
+                  <div className="bg-primary-50 rounded-lg p-4 space-y-3">
+                    <h4 className="font-medium text-slate-800">完成维修</h4>
+                    <div>
+                      <label className="text-xs text-slate-500 mb-1 block">
+                        处理结果
+                      </label>
+                      <textarea
+                        value={repairResult}
+                        onChange={(e) => setRepairResult(e.target.value)}
+                        placeholder="请填写维修处理结果..."
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none bg-white"
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500 mb-2 block">
+                        处理图片（图片链接，多张用逗号分隔）
+                      </label>
+                      <textarea
+                        value={repairImages.join(",")}
+                        onChange={(e) =>
+                          setRepairImages(
+                            e.target.value
+                              .split(",")
+                              .map((s) => s.trim())
+                              .filter(Boolean)
+                          )
+                        }
+                        placeholder="请输入图片链接，多张用逗号分隔..."
+                        rows={2}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none bg-white font-mono"
+                      />
+                      {repairImages.length > 0 && (
+                        <div className="flex gap-2 flex-wrap mt-2">
+                          {repairImages.map((img, i) => (
+                            <div
+                              key={i}
+                              className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200"
+                            >
+                              <Image className="w-4 h-4 text-slate-400" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500 mb-2 block">
+                        设施状态
+                      </label>
+                      <div className="flex gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="facilityStatus"
+                            value="normal"
+                            checked={facilityStatusAfter === "normal"}
+                            onChange={() => setFacilityStatusAfter("normal")}
+                            className="text-primary-600"
+                          />
+                          <span className="text-sm text-slate-700">
+                            恢复正常
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="facilityStatus"
+                            value="fault"
+                            checked={facilityStatusAfter === "fault"}
+                            onChange={() => setFacilityStatusAfter("fault")}
+                            className="text-primary-600"
+                          />
+                          <span className="text-sm text-slate-700">
+                            保留异常
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {repair.status === "completed" && (
                   <div className="bg-success-50 border border-success-200 rounded-lg p-4 space-y-3">
@@ -622,7 +784,9 @@ export default function Facility() {
                           currentUser.id,
                           currentUser.name,
                           repairResult,
-                          facilityStatusAfter
+                          facilityStatusAfter,
+                          undefined,
+                          repairImages
                         );
                         setShowRepairDetail(null);
                       }}

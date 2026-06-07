@@ -13,6 +13,7 @@ import {
   Loader2,
   Image,
   MessageSquare,
+  FileText,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import EventForm from "@/components/forms/EventForm";
@@ -28,7 +29,7 @@ import {
 import type { EventStatus, EventLevel, EventType } from "@/types";
 
 export default function Events() {
-  const { events, users, currentUser, eventLogs, assignEvent, resolveEvent, updateEventLevel } = useAppStore();
+  const { events, users, currentUser, eventLogs, assignEvent, resolveEvent, updateEventLevel, updateEventReview } = useAppStore();
   const [activeTab, setActiveTab] = useState<"all" | EventStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetail, setShowDetail] = useState<string | null>(null);
@@ -36,6 +37,11 @@ export default function Events() {
   const [showLevelModal, setShowLevelModal] = useState(false);
   const [newLevel, setNewLevel] = useState<EventLevel>("medium");
   const [levelReason, setLevelReason] = useState("");
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewSummary, setReviewSummary] = useState("");
+  const [reviewImpact, setReviewImpact] = useState("");
+  const [reviewDepartments, setReviewDepartments] = useState<string[]>([]);
+  const [reviewMeasures, setReviewMeasures] = useState("");
 
   const filteredEvents = events.filter((event) => {
     const matchesTab = activeTab === "all" || event.status === activeTab;
@@ -312,6 +318,64 @@ export default function Events() {
                 </div>
               )}
 
+              {selectedEvent.reviewSummary && (
+                <div className="mb-6 bg-warning-50 border border-warning-200 rounded-lg p-4 space-y-3">
+                  <h4 className="text-sm font-medium text-slate-800 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    事件复盘纪要
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <p className="text-xs text-slate-500">复盘摘要</p>
+                      <p className="text-slate-700">{selectedEvent.reviewSummary}</p>
+                    </div>
+                    {selectedEvent.impactScope && (
+                      <div>
+                        <p className="text-xs text-slate-500">影响范围</p>
+                        <p className="text-slate-700">{selectedEvent.impactScope}</p>
+                      </div>
+                    )}
+                    {selectedEvent.involvedDepartments && selectedEvent.involvedDepartments.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500">参与部门</p>
+                        <div className="flex gap-1 flex-wrap">
+                          {selectedEvent.involvedDepartments.map((dept, i) => (
+                            <span
+                              key={i}
+                              className="text-xs px-2 py-0.5 bg-warning-100 text-warning-700 rounded-full"
+                            >
+                              {dept}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {selectedEvent.improvementMeasures && (
+                      <div>
+                        <p className="text-xs text-slate-500">改进措施</p>
+                        <p className="text-slate-700">{selectedEvent.improvementMeasures}</p>
+                      </div>
+                    )}
+                    {selectedEvent.reviewedByName && (
+                      <div className="flex items-center gap-4 pt-2 border-t border-warning-200">
+                        <div>
+                          <p className="text-xs text-slate-500">复盘人</p>
+                          <p className="text-slate-700">{selectedEvent.reviewedByName}</p>
+                        </div>
+                        {selectedEvent.reviewTime && (
+                          <div>
+                            <p className="text-xs text-slate-500">复盘时间</p>
+                            <p className="text-slate-700 font-mono">
+                              {formatDateTime(selectedEvent.reviewTime)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h4 className="text-sm font-medium text-slate-800 mb-3 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
@@ -366,6 +430,23 @@ export default function Events() {
                     标记已解决
                   </button>
                 )}
+                {(selectedEvent.status === "resolved" || selectedEvent.status === "closed") &&
+                  (selectedEvent.level === "high" || selectedEvent.level === "critical") &&
+                  !selectedEvent.reviewSummary && (
+                    <button
+                      onClick={() => {
+                        setReviewSummary("");
+                        setReviewImpact("");
+                        setReviewDepartments([]);
+                        setReviewMeasures("");
+                        setShowReviewForm(true);
+                      }}
+                      className="flex-1 px-4 py-2.5 bg-warning-600 text-white rounded-lg hover:bg-warning-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      事件复盘
+                    </button>
+                  )}
                 {selectedEvent.status !== "resolved" && selectedEvent.status !== "closed" && (
                   <button
                     onClick={() => {
@@ -477,6 +558,109 @@ export default function Events() {
                 className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 确认调整
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedEvent && showReviewForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl animate-fade-in max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-800">事件复盘</h3>
+              <button
+                onClick={() => setShowReviewForm(false)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <XCircle className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">
+                  复盘摘要 <span className="text-danger-500">*</span>
+                </label>
+                <textarea
+                  value={reviewSummary}
+                  onChange={(e) => setReviewSummary(e.target.value)}
+                  placeholder="请简要描述事件复盘的核心结论..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">
+                  影响范围
+                </label>
+                <textarea
+                  value={reviewImpact}
+                  onChange={(e) => setReviewImpact(e.target.value)}
+                  placeholder="请描述事件的影响范围和程度..."
+                  rows={2}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">
+                  参与部门
+                </label>
+                <input
+                  type="text"
+                  value={reviewDepartments.join(",")}
+                  onChange={(e) =>
+                    setReviewDepartments(
+                      e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    )
+                  }
+                  placeholder="请输入参与部门，多个用逗号分隔，如：安保部,工程部,客服部"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">
+                  改进措施
+                </label>
+                <textarea
+                  value={reviewMeasures}
+                  onChange={(e) => setReviewMeasures(e.target.value)}
+                  placeholder="请描述后续的改进措施和预防方案..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                />
+              </div>
+            </div>
+            <div className="p-5 border-t border-slate-100 flex gap-3">
+              <button
+                onClick={() => setShowReviewForm(false)}
+                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-sm"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  if (reviewSummary.trim()) {
+                    updateEventReview(
+                      selectedEvent.id,
+                      {
+                        summary: reviewSummary,
+                        impactScope: reviewImpact,
+                        involvedDepartments: reviewDepartments,
+                        improvementMeasures: reviewMeasures,
+                      },
+                      currentUser.id,
+                      currentUser.name
+                    );
+                    setShowReviewForm(false);
+                  }
+                }}
+                disabled={!reviewSummary.trim()}
+                className="flex-1 px-4 py-2.5 bg-warning-600 text-white rounded-lg hover:bg-warning-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                保存复盘
               </button>
             </div>
           </div>

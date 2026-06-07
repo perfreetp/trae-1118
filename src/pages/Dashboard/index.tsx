@@ -15,6 +15,7 @@ import {
   User,
   Image,
   MessageSquare,
+  FileText,
 } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
 import EventForm from "@/components/forms/EventForm";
@@ -77,6 +78,10 @@ export default function Dashboard() {
   const latestBroadcastLog = eventLogs
     .filter((l) => l.action === "触发广播联动")
     .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
+
+  const latestReviewedEvent = events
+    .filter((e) => e.reviewSummary && e.reviewTime)
+    .sort((a, b) => new Date(b.reviewTime!).getTime() - new Date(a.reviewTime!).getTime())[0];
 
   return (
     <div className="space-y-6">
@@ -150,6 +155,38 @@ export default function Dashboard() {
             <p className="text-xs text-slate-400 font-mono">
               {formatDateTime(latestBroadcastLog.time)}
             </p>
+          </div>
+        </div>
+      )}
+
+      {latestReviewedEvent && (
+        <div className="bg-warning-50 border border-warning-200 p-4 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-full bg-warning-100">
+              <FileText className="w-5 h-5 text-warning-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-800">最近事件复盘</p>
+              <p className="text-xs text-slate-600 mt-0.5 font-medium">
+                {latestReviewedEvent.title}
+              </p>
+              <p className="text-xs text-slate-500 mt-1 line-clamp-1">
+                {latestReviewedEvent.reviewSummary}
+              </p>
+            </div>
+            <div className="text-right">
+              <span
+                className={cn(
+                  "text-xs px-2 py-0.5 rounded-full",
+                  getEventLevelColor(latestReviewedEvent.level)
+                )}
+              >
+                {getEventLevelText(latestReviewedEvent.level)}
+              </span>
+              <p className="text-xs text-slate-400 font-mono mt-1">
+                {latestReviewedEvent.reviewTime && formatDateTime(latestReviewedEvent.reviewTime)}
+              </p>
+            </div>
           </div>
         </div>
       )}

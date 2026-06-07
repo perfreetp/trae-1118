@@ -61,6 +61,13 @@ export interface Event {
   updateTime: string;
   description: string;
   images: string[];
+  reviewSummary?: string;
+  impactScope?: string;
+  involvedDepartments?: string[];
+  improvementMeasures?: string;
+  reviewTime?: string;
+  reviewedBy?: string;
+  reviewedByName?: string;
 }
 
 export interface EventLog {
@@ -154,6 +161,7 @@ export interface Repair {
   verifiedByName?: string;
   verifyTime?: string;
   rejectReason?: string;
+  repairImages?: string[];
 }
 
 export interface Merchant {

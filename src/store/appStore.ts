@@ -82,7 +82,8 @@ interface AppState {
     verifyData?: {
       remark?: string;
       rejectReason?: string;
-    }
+    },
+    repairImages?: string[]
   ) => void;
   addRepairLog: (log: Omit<RepairLog, "id">) => void;
   updateFacilityStatus: (facilityId: string, status: Facility["status"]) => void;
@@ -105,6 +106,17 @@ interface AppState {
   resolveEvent: (eventId: string) => void;
   addFacility: (facility: Omit<Facility, "id">) => void;
   addNotice: (notice: Omit<Notice, "id" | "publishTime" | "isRead">) => void;
+  updateEventReview: (
+    eventId: string,
+    reviewData: {
+      summary: string;
+      impactScope: string;
+      involvedDepartments: string[];
+      improvementMeasures: string;
+    },
+    userId: string,
+    userName: string
+  ) => void;
 }
 
 export const useAppStore = create<AppState>((set) => {
@@ -272,7 +284,7 @@ export const useAppStore = create<AppState>((set) => {
       };
     }),
 
-  updateRepairStatus: (repairId, status, userId, userName, result, facilityStatusAfter, verifyData) =>
+  updateRepairStatus: (repairId, status, userId, userName, result, facilityStatusAfter, verifyData, repairImages) =>
     set((state) => {
       const now = new Date().toISOString();
       const repair = state.repairs.find((r) => r.id === repairId);
@@ -327,6 +339,12 @@ export const useAppStore = create<AppState>((set) => {
                   status === "repairing" && r.status === "completed"
                     ? verifyData?.rejectReason
                     : r.rejectReason,
+                solution:
+                  status === "completed" && result ? result : r.solution,
+                repairImages:
+                  status === "completed" && repairImages
+                    ? repairImages
+                    : r.repairImages,
               }
             : r
         ),
@@ -422,12 +440,15 @@ export const useAppStore = create<AppState>((set) => {
         );
       }
 
+      const isFailedReview = status === "failed";
+      const actualStatus = isFailedReview ? "rectifying" : status;
+
       return {
         rectifications: state.rectifications.map((r) =>
           r.id === rectificationId
             ? {
                 ...r,
-                status,
+                status: actualStatus,
                 ...(status === "passed" || status === "failed"
                   ? {
                       reviewTime: now,
@@ -626,5 +647,37 @@ export const useAppStore = create<AppState>((set) => {
         ...state.notices,
       ],
     })),
+  updateEventReview: (eventId, reviewData, userId, userName) =>
+    set((state) => {
+      const now = new Date().toISOString();
+      return {
+        events: state.events.map((e) =>
+          e.id === eventId
+            ? {
+                ...e,
+                reviewSummary: reviewData.summary,
+                impactScope: reviewData.impactScope,
+                involvedDepartments: reviewData.involvedDepartments,
+                improvementMeasures: reviewData.improvementMeasures,
+                reviewTime: now,
+                reviewedBy: userId,
+                reviewedByName: userName,
+              }
+            : e
+        ),
+        eventLogs: [
+          {
+            id: `el${Date.now()}`,
+            eventId,
+            userId,
+            userName,
+            action: "事件复盘",
+            time: now,
+            remark: `已完成事件复盘，纪要：${reviewData.summary.substring(0, 50)}...`,
+          },
+          ...state.eventLogs,
+        ],
+      };
+    }),
   };
 });

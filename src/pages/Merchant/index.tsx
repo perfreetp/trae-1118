@@ -245,6 +245,7 @@ export default function Merchant() {
                   <th className="px-4 py-3 font-medium">下发时间</th>
                   <th className="px-4 py-3 font-medium">截止时间</th>
                   <th className="px-4 py-3 font-medium">状态</th>
+                  <th className="px-4 py-3 font-medium">复查结论</th>
                   <th className="px-4 py-3 font-medium">复查人</th>
                   <th className="px-4 py-3 font-medium">操作</th>
                 </tr>
@@ -287,6 +288,22 @@ export default function Merchant() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
+                      {rect.reviewResult ? (
+                        <span
+                          className={cn(
+                            "text-xs px-2 py-1 rounded-full",
+                            rect.reviewResult === "passed"
+                              ? "bg-success-100 text-success-700"
+                              : "bg-danger-100 text-danger-700"
+                          )}
+                        >
+                          {rect.reviewResult === "passed" ? "通过" : "不通过"}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <span className="text-sm text-slate-600">
                         {rect.reviewerName || (rect.status === "passed" ? "-" : "待复查")}
                       </span>
@@ -325,7 +342,7 @@ export default function Merchant() {
                             className="text-xs px-3 py-1.5 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors flex items-center gap-1"
                           >
                             <FileText className="w-3 h-3" />
-                            申请复查
+                            {rect.reviewResult === "failed" ? "再次申请复查" : "申请复查"}
                           </button>
                         )}
                         {rect.status === "reviewing" && (
@@ -344,7 +361,7 @@ export default function Merchant() {
                             整改通过
                           </button>
                         )}
-                          {(rect.status === "passed" || rect.status === "failed") && (
+                        {rect.status === "passed" && (
                           <span className="text-xs text-slate-400">已完成</span>
                         )}
                       </div>
@@ -504,6 +521,37 @@ export default function Merchant() {
                         rows={3}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none bg-white"
                       />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500 mb-2 block">
+                        复查图片（图片链接，多张用逗号分隔）
+                      </label>
+                      <textarea
+                        value={reviewImages.join(",")}
+                        onChange={(e) =>
+                          setReviewImages(
+                            e.target.value
+                              .split(",")
+                              .map((s) => s.trim())
+                              .filter(Boolean)
+                          )
+                        }
+                        placeholder="请输入图片链接，多张用逗号分隔..."
+                        rows={2}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none bg-white font-mono"
+                      />
+                      {reviewImages.length > 0 && (
+                        <div className="flex gap-2 flex-wrap mt-2">
+                          {reviewImages.map((img, i) => (
+                            <div
+                              key={i}
+                              className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200"
+                            >
+                              <Image className="w-4 h-4 text-slate-400" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2 pt-2">
                       <button
