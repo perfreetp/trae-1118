@@ -10,6 +10,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   ArrowRight,
+  X,
+  MapPin,
+  User,
+  Image,
+  MessageSquare,
 } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
 import EventForm from "@/components/forms/EventForm";
@@ -30,6 +35,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart,
 export default function Dashboard() {
   const navigate = useNavigate();
   const [showEventForm, setShowEventForm] = useState(false);
+  const [showEventDetail, setShowEventDetail] = useState<string | null>(null);
   const {
     events,
     users,
@@ -40,6 +46,9 @@ export default function Dashboard() {
     crowdData,
     notices,
     currentUser,
+    eventLogs,
+    assignEvent,
+    resolveEvent,
   } = useAppStore();
 
   const pendingEvents = events.filter((e) => e.status === "pending").length;
@@ -246,7 +255,7 @@ export default function Dashboard() {
                   <tr
                     key={event.id}
                     className="border-b border-slate-50 hover:bg-slate-50 cursor-pointer"
-                    onClick={() => navigate(`/events/${event.id}`)}
+                    onClick={() => setShowEventDetail(event.id)}
                   >
                     <td className="py-3">
                       <span className="text-sm font-medium text-slate-800">{event.title}</span>
@@ -355,6 +364,189 @@ export default function Dashboard() {
       </div>
 
       <EventForm isOpen={showEventForm} onClose={() => setShowEventForm(false)} />
+
+      {showEventDetail && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-800">事件详情</h3>
+              <button
+                onClick={() => setShowEventDetail(null)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto max-h-[calc(90vh-140px)]">
+              {(() => {
+                const selectedEvent = events.find((e) => e.id === showEventDetail);
+                if (!selectedEvent) return null;
+
+                return (
+                  <>
+                    <div className="flex items-start justify-between mb-6">
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-800">
+                          {selectedEvent.title}
+                        </h2>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span
+                            className={cn(
+                              "text-xs px-2 py-1 rounded-full border",
+                              getEventLevelColor(selectedEvent.level)
+                            )}
+                          >
+                            {getEventLevelText(selectedEvent.level)}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-xs px-2 py-1 rounded-full",
+                              getEventStatusColor(selectedEvent.status)
+                            )}
+                          >
+                            {getEventStatusText(selectedEvent.status)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="bg-slate-50 rounded-lg p-3">
+                        <p className="text-xs text-slate-500 mb-1">事件类型</p>
+                        <p className="text-sm font-medium text-slate-800">
+                          {getEventTypeText(selectedEvent.type)}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-3">
+                        <p className="text-xs text-slate-500 mb-1">发生位置</p>
+                        <p className="text-sm font-medium text-slate-800 flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5" />
+                          {selectedEvent.location}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-3">
+                        <p className="text-xs text-slate-500 mb-1">上报人</p>
+                        <p className="text-sm font-medium text-slate-800">
+                          {selectedEvent.reporterName}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-3">
+                        <p className="text-xs text-slate-500 mb-1">处理人</p>
+                        <p className="text-sm font-medium text-slate-800">
+                          {selectedEvent.handlerName || "暂未指定"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-slate-800 mb-2">事件描述</h4>
+                      <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">
+                        {selectedEvent.description || "暂无描述"}
+                      </p>
+                    </div>
+
+                    {selectedEvent.images.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="text-sm font-medium text-slate-800 mb-3 flex items-center gap-2">
+                          <Image className="w-4 h-4" />
+                          现场图片
+                        </h4>
+                        <div className="grid grid-cols-3 gap-3">
+                          {selectedEvent.images.map((img, index) => (
+                            <img
+                              key={index}
+                              src={img}
+                              alt={`现场图片${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-800 mb-3 flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        操作时间线
+                      </h4>
+                      <div className="space-y-4">
+                        {eventLogs
+                          .filter((log) => log.eventId === selectedEvent.id)
+                          .sort(
+                            (a, b) =>
+                              new Date(a.time).getTime() - new Date(b.time).getTime()
+                          )
+                          .map((log) => (
+                            <div key={log.id} className="flex gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center flex-shrink-0">
+                                <User className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1 bg-slate-50 rounded-lg p-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-800">
+                                    {log.userName}
+                                  </span>
+                                  <span className="text-xs text-slate-400">
+                                    {formatDateTime(log.time)}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-slate-600 mt-1">
+                                  {log.action}
+                                </p>
+                                {log.remark && (
+                                  <p className="text-xs text-slate-500 mt-1">
+                                    {log.remark}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            <div className="p-5 border-t border-slate-100 flex gap-3">
+              {(() => {
+                const selectedEvent = events.find((e) => e.id === showEventDetail);
+                if (!selectedEvent) return null;
+
+                return (
+                  <>
+                    {selectedEvent.status === "pending" && (
+                      <button
+                        onClick={() => {
+                          assignEvent(selectedEvent.id, currentUser.id, currentUser.name);
+                        }}
+                        className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                      >
+                        接手处理
+                      </button>
+                    )}
+                    {selectedEvent.status === "processing" && (
+                      <button
+                        onClick={() => resolveEvent(selectedEvent.id)}
+                        className="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors"
+                      >
+                        标记已解决
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowEventDetail(null)}
+                      className="px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      关闭
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

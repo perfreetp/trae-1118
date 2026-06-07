@@ -144,7 +144,8 @@ export interface Repair {
   handlerName: string;
   status: RepairStatus;
   createTime: string;
-  finishTime: string;
+  startTime?: string;
+  finishTime?: string;
   description: string;
   solution: string;
   priority: "low" | "medium" | "high";
@@ -188,6 +189,26 @@ export interface Rectification {
   reviewerId: string;
   reviewerName: string;
   images: string[];
+}
+
+export interface RectificationLog {
+  id: string;
+  rectificationId: string;
+  userId: string;
+  userName: string;
+  action: string;
+  time: string;
+  remark: string;
+}
+
+export interface RepairLog {
+  id: string;
+  repairId: string;
+  userId: string;
+  userName: string;
+  action: string;
+  time: string;
+  remark: string;
 }
 
 export type DrillType = "fire" | "evacuation" | "earthquake" | "first-aid" | "terrorism";

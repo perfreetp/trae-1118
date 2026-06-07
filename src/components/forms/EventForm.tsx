@@ -32,6 +32,7 @@ export default function EventForm({ isOpen, onClose }: EventFormProps) {
     type: "equipment-fault" as EventType,
     level: "medium" as EventLevel,
     location: "",
+    reporterId: currentUser.id,
     handlerId: "",
     description: "",
     images: [] as string[],
@@ -45,6 +46,7 @@ export default function EventForm({ isOpen, onClose }: EventFormProps) {
 
     setIsSubmitting(true);
 
+    const reporter = users.find((u) => u.id === formData.reporterId);
     const handler = users.find((u) => u.id === formData.handlerId);
 
     addEvent({
@@ -52,8 +54,8 @@ export default function EventForm({ isOpen, onClose }: EventFormProps) {
       type: formData.type,
       level: formData.level,
       location: formData.location,
-      reporterId: currentUser.id,
-      reporterName: currentUser.name,
+      reporterId: formData.reporterId,
+      reporterName: reporter?.name || currentUser.name,
       handlerId: formData.handlerId || "",
       handlerName: handler?.name || "",
       status: formData.handlerId ? "processing" : "pending",
@@ -69,6 +71,7 @@ export default function EventForm({ isOpen, onClose }: EventFormProps) {
         type: "equipment-fault",
         level: "medium",
         location: "",
+        reporterId: currentUser.id,
         handlerId: "",
         description: "",
         images: [],
@@ -174,22 +177,40 @@ export default function EventForm({ isOpen, onClose }: EventFormProps) {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                处理人（可选，不选则进入待处理池）
-              </label>
-              <select
-                value={formData.handlerId}
-                onChange={(e) => setFormData({ ...formData, handlerId: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-              >
-                <option value="">暂不指定，进入待处理池</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} - {user.department}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  上报人
+                </label>
+                <select
+                  value={formData.reporterId}
+                  onChange={(e) => setFormData({ ...formData, reporterId: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                >
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} - {user.department}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  处理人（可选）
+                </label>
+                <select
+                  value={formData.handlerId}
+                  onChange={(e) => setFormData({ ...formData, handlerId: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                >
+                  <option value="">暂不指定，进入待处理池</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} - {user.department}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>

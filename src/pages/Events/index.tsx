@@ -28,7 +28,7 @@ import {
 import type { EventStatus, EventLevel, EventType } from "@/types";
 
 export default function Events() {
-  const { events, users, currentUser, assignEvent, resolveEvent } = useAppStore();
+  const { events, users, currentUser, eventLogs, assignEvent, resolveEvent } = useAppStore();
   const [activeTab, setActiveTab] = useState<"all" | EventStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetail, setShowDetail] = useState<string | null>(null);
@@ -312,61 +312,35 @@ export default function Events() {
               <div>
                 <h4 className="text-sm font-medium text-slate-800 mb-3 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
-                  处理记录
+                  操作时间线
                 </h4>
                 <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 bg-slate-50 rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-800">
-                          {selectedEvent.reporterName}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {formatDateTime(selectedEvent.createTime)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 mt-1">事件已上报</p>
-                    </div>
-                  </div>
-
-                  {selectedEvent.status !== "pending" && (
-                    <div className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-success-100 text-success-600 flex items-center justify-center flex-shrink-0">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 bg-slate-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-slate-800">
-                            {selectedEvent.handlerName}
-                          </span>
-                          <span className="text-xs text-slate-400">
-                            {formatDateTime(selectedEvent.updateTime)}
-                          </span>
+                  {eventLogs
+                    .filter((log) => log.eventId === selectedEvent.id)
+                    .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
+                    .map((log) => (
+                      <div key={log.id} className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center flex-shrink-0">
+                          <User className="w-4 h-4" />
                         </div>
-                        <p className="text-sm text-slate-600 mt-1">已接手处理</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedEvent.status === "resolved" && (
-                    <div className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-success-100 text-success-600 flex items-center justify-center flex-shrink-0">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 bg-slate-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-slate-800">系统</span>
-                          <span className="text-xs text-slate-400">
-                            {formatDateTime(selectedEvent.updateTime)}
-                          </span>
+                        <div className="flex-1 bg-slate-50 rounded-lg p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-800">
+                              {log.userName}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {formatDateTime(log.time)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-600 mt-1">{log.action}</p>
+                          {log.remark && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              {log.remark}
+                            </p>
+                          )}
                         </div>
-                        <p className="text-sm text-slate-600 mt-1">事件已解决</p>
                       </div>
-                    </div>
-                  )}
+                    ))}
                 </div>
               </div>
 

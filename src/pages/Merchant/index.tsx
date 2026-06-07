@@ -11,6 +11,10 @@ import {
   Phone,
   FileText,
   ArrowRight,
+  X,
+  User,
+  Image,
+  MessageSquare,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import RectificationForm from "@/components/forms/RectificationForm";
@@ -23,11 +27,18 @@ import {
 import type { RectificationStatus } from "@/types";
 
 export default function Merchant() {
-  const { merchants, rectifications, updateRectificationStatus } = useAppStore();
+  const {
+    merchants,
+    rectifications,
+    rectificationLogs,
+    currentUser,
+    updateRectificationStatus,
+  } = useAppStore();
   const [activeTab, setActiveTab] = useState<"merchants" | "rectifications">("merchants");
   const [selectedFloor, setSelectedFloor] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showRectificationForm, setShowRectificationForm] = useState(false);
+  const [showDetail, setShowDetail] = useState<string | null>(null);
 
   const floors = ["all", "1层", "2层", "3层", "4层", "5层", "B1"];
 
@@ -238,7 +249,11 @@ export default function Merchant() {
               </thead>
               <tbody>
                 {rectifications.map((rect) => (
-                  <tr key={rect.id} className="border-t border-slate-50 hover:bg-slate-50">
+                  <tr
+                    key={rect.id}
+                    className="border-t border-slate-50 hover:bg-slate-50 cursor-pointer"
+                    onClick={() => setShowDetail(rect.id)}
+                  >
                     <td className="px-4 py-3">
                       <span className="text-sm font-medium text-slate-800">
                         {rect.merchantName}
@@ -275,38 +290,62 @@ export default function Merchant() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {rect.status === "issued" && (
-                        <button
-                          onClick={() => updateRectificationStatus(rect.id, "rectifying")}
-                          className="text-xs px-3 py-1.5 bg-warning-100 text-warning-700 rounded-lg hover:bg-warning-200 transition-colors flex items-center gap-1"
-                        >
-                          <Clock className="w-3 h-3" />
-                          开始整改
-                        </button>
-                      )}
-                      {rect.status === "rectifying" && (
-                        <button
-                          onClick={() => updateRectificationStatus(rect.id, "reviewing")}
-                          className="text-xs px-3 py-1.5 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors flex items-center gap-1"
-                        >
-                          <FileText className="w-3 h-3" />
-                          申请复查
-                        </button>
-                      )}
-                      {rect.status === "reviewing" && (
-                        <button
-                          onClick={() =>
-                            updateRectificationStatus(rect.id, "passed")
-                          }
-                          className="text-xs px-3 py-1.5 bg-success-100 text-success-700 rounded-lg hover:bg-success-200 transition-colors flex items-center gap-1"
-                        >
-                          <CheckCircle2 className="w-3 h-3" />
-                          整改通过
-                        </button>
-                      )}
-                      {(rect.status === "passed" || rect.status === "failed") && (
-                        <span className="text-xs text-slate-400">已完成</span>
-                      )}
+                      <div
+                        className="flex gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {rect.status === "issued" && (
+                          <button
+                            onClick={() =>
+                              updateRectificationStatus(
+                                rect.id,
+                                "rectifying",
+                                currentUser.id,
+                                currentUser.name
+                              )
+                            }
+                            className="text-xs px-3 py-1.5 bg-warning-100 text-warning-700 rounded-lg hover:bg-warning-200 transition-colors flex items-center gap-1"
+                          >
+                            <Clock className="w-3 h-3" />
+                            开始整改
+                          </button>
+                        )}
+                        {rect.status === "rectifying" && (
+                          <button
+                            onClick={() =>
+                              updateRectificationStatus(
+                                rect.id,
+                                "reviewing",
+                                currentUser.id,
+                                currentUser.name
+                              )
+                            }
+                            className="text-xs px-3 py-1.5 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors flex items-center gap-1"
+                          >
+                            <FileText className="w-3 h-3" />
+                            申请复查
+                          </button>
+                        )}
+                        {rect.status === "reviewing" && (
+                          <button
+                            onClick={() =>
+                              updateRectificationStatus(
+                                rect.id,
+                                "passed",
+                                currentUser.id,
+                                currentUser.name
+                              )
+                            }
+                            className="text-xs px-3 py-1.5 bg-success-100 text-success-700 rounded-lg hover:bg-success-200 transition-colors flex items-center gap-1"
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            整改通过
+                          </button>
+                        )}
+                          {(rect.status === "passed" || rect.status === "failed") && (
+                          <span className="text-xs text-slate-400">已完成</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -320,6 +359,191 @@ export default function Merchant() {
         isOpen={showRectificationForm}
         onClose={() => setShowRectificationForm(false)}
       />
+
+      {showDetail && (() => {
+        const rectification = rectifications.find((r) => r.id === showDetail);
+        if (!rectification) return null;
+
+        const logs = rectificationLogs
+          .filter((l) => l.rectificationId === showDetail)
+          .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-800">
+                  整改详情
+                </h3>
+                <button
+                  onClick={() => setShowDetail(null)}
+                  className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto flex-1 space-y-6">
+                <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-slate-800">
+                      {rectification.merchantName}
+                    </h4>
+                    <span
+                      className={cn(
+                        "text-xs px-2 py-1 rounded-full",
+                        getRectificationStatusColor(rectification.status)
+                      )}
+                    >
+                      {getRectificationStatusText(rectification.status)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">整改问题</p>
+                    <p className="text-sm text-slate-700">
+                      {rectification.issue}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">下发时间</p>
+                      <p className="text-sm text-slate-700 font-mono">
+                        {formatDateTime(rectification.issueTime)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">截止时间</p>
+                      <p className="text-sm text-slate-700 font-mono">
+                        {formatDateTime(rectification.deadline)}
+                      </p>
+                    </div>
+                  </div>
+                  {rectification.reviewerName && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">复查人</p>
+                      <p className="text-sm text-slate-700">
+                        {rectification.reviewerName}
+                      </p>
+                    </div>
+                  )}
+                  {rectification.images.length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2">现场图片</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {rectification.images.map((img, i) => (
+                          <div
+                            key={i}
+                            className="w-24 h-24 rounded-lg bg-slate-200 flex items-center justify-center"
+                          >
+                            <Image className="w-6 h-6 text-slate-400" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="font-medium text-slate-800 mb-3 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    操作记录
+                  </h4>
+                  <div className="space-y-3">
+                    {logs.length === 0 ? (
+                      <p className="text-sm text-slate-500 text-center py-4">
+                        暂无操作记录
+                      </p>
+                    ) : (
+                      logs.map((log) => (
+                        <div key={log.id} className="flex gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 bg-slate-50 rounded-lg p-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-slate-800">
+                                {log.userName || "系统"}
+                              </span>
+                              <span className="text-xs text-slate-400 font-mono">
+                                {formatDateTime(log.time)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-600 mt-1">
+                              {log.action}
+                            </p>
+                            {log.remark && (
+                              <p className="text-xs text-slate-500 mt-1">
+                                {log.remark}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  {rectification.status === "issued" && (
+                    <button
+                      onClick={() => {
+                        updateRectificationStatus(
+                          rectification.id,
+                          "rectifying",
+                          currentUser.id,
+                          currentUser.name
+                        );
+                      }}
+                      className="flex-1 px-4 py-2.5 bg-warning-100 text-warning-700 rounded-lg hover:bg-warning-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Clock className="w-4 h-4" />
+                      开始整改
+                    </button>
+                  )}
+                  {rectification.status === "rectifying" && (
+                    <button
+                      onClick={() => {
+                        updateRectificationStatus(
+                          rectification.id,
+                          "reviewing",
+                          currentUser.id,
+                          currentUser.name
+                        );
+                      }}
+                      className="flex-1 px-4 py-2.5 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      申请复查
+                    </button>
+                  )}
+                  {rectification.status === "reviewing" && (
+                    <button
+                      onClick={() => {
+                        updateRectificationStatus(
+                          rectification.id,
+                          "passed",
+                          currentUser.id,
+                          currentUser.name
+                        );
+                        setShowDetail(null);
+                      }}
+                      className="flex-1 px-4 py-2.5 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      整改通过
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowDetail(null)}
+                    className="px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    关闭
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
